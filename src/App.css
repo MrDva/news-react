@@ -36,3 +36,6 @@ button:hover {
   color: red;
   margin-top: 10px;
 }
+
+.ReactModal__Overlay { background-color: rgba(0, 0, 0, 0.5); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
