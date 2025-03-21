@@ -33,7 +33,7 @@ const Subscription: React.FC = () => {
         console.log('Subscription status response:', response.data);
         if (response.data.subscribed) {
           setIsSubscribed(true);
-          setPaymentForm(null);
+          setPaymentForm(null); // 确保关闭弹窗
           if (iframeUrl) {
             URL.revokeObjectURL(iframeUrl);
             setIframeUrl(null);
@@ -41,11 +41,10 @@ const Subscription: React.FC = () => {
           if (!silent) {
             setMessage('Subscription successful!');
             setTimeout(() => {
-              setMessage(''); // 清空消息
-              navigate('/news');
+              setMessage('');
+              navigate('/news', { replace: true }); // 替换历史记录
+              // window.location.href = '/news'; // 可选：强制刷新
             }, 2000);
-          } else {
-            setMessage('You are already subscribed!');
           }
         } else if (!silent) {
           setMessage('Payment pending...');
@@ -65,7 +64,7 @@ const Subscription: React.FC = () => {
   useEffect(() => {
     let pollInterval: NodeJS.Timeout;
     if (paymentForm) {
-      pollInterval = setInterval(() => checkSubscriptionStatus(true), 2000);
+      pollInterval = setInterval(() => checkSubscriptionStatus(true), 1000); // 缩短到 1 秒
     }
     return () => {
       if (pollInterval) clearInterval(pollInterval);
@@ -75,8 +74,10 @@ const Subscription: React.FC = () => {
   const processPaymentForm = (html: string): string => {
     const cleanHTML = DOMPurify.sanitize(html, {
       ALLOWED_TAGS: ['form', 'input', 'script'],
-      ALLOWED_ATTR: ['name', 'method', 'action', 'type', 'value', 'style'],
+      ALLOWED_ATTR: ['name', 'method', 'action', 'type', 'value', 'style', 'target'],
     });
+    // 确保表单导航主窗口
+    const modifiedHTML = cleanHTML.replace('<form', '<form target="_top"');
     const fullHTML = `
       <!DOCTYPE html>
       <html>
@@ -84,7 +85,7 @@ const Subscription: React.FC = () => {
           <meta charset="utf-8"/>
           <meta name="viewport" content="width=device-width, initial-scale=1"/>
         </head>
-        <body style="margin:0">${cleanHTML}</body>
+        <body style="margin:0">${modifiedHTML}</body>
       </html>
     `;
     const blob = new Blob([fullHTML], { type: 'text/html' });
@@ -144,9 +145,8 @@ const Subscription: React.FC = () => {
           <iframe
             title="Alipay Payment"
             src={iframeUrl}
-            sandbox="allow-forms allow-scripts allow-same-origin"
+            sandbox="allow-forms allow-scripts allow-top-navigation" // 移除 allow-same-origin
             style={{ width: '100%', height: '100%', border: 'none' }}
-            onLoad={() => setMessage('Redirecting to payment...')}
           />
         )}
         <button
