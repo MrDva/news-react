@@ -33,18 +33,19 @@ const Subscription: React.FC = () => {
         console.log('Subscription status response:', response.data);
         if (response.data.subscribed) {
           setIsSubscribed(true);
-          setPaymentForm(null); // 确保关闭弹窗
+          setPaymentForm(null);
           if (iframeUrl) {
             URL.revokeObjectURL(iframeUrl);
             setIframeUrl(null);
           }
           if (!silent) {
-            setMessage('Subscription successful!');
+            setMessage('You are already subscribed!');
             setTimeout(() => {
               setMessage('');
-              navigate('/news', { replace: true }); // 替换历史记录
-              // window.location.href = '/news'; // 可选：强制刷新
+              navigate('/news', { replace: true });
             }, 2000);
+          } else {
+            navigate('/news', { replace: true });
           }
         } else if (!silent) {
           setMessage('Payment pending...');
@@ -64,7 +65,7 @@ const Subscription: React.FC = () => {
   useEffect(() => {
     let pollInterval: NodeJS.Timeout;
     if (paymentForm) {
-      pollInterval = setInterval(() => checkSubscriptionStatus(true), 1000); // 缩短到 1 秒
+      pollInterval = setInterval(() => checkSubscriptionStatus(true), 1000);
     }
     return () => {
       if (pollInterval) clearInterval(pollInterval);
@@ -76,7 +77,6 @@ const Subscription: React.FC = () => {
       ALLOWED_TAGS: ['form', 'input', 'script'],
       ALLOWED_ATTR: ['name', 'method', 'action', 'type', 'value', 'style', 'target'],
     });
-    // 确保表单导航主窗口
     const modifiedHTML = cleanHTML.replace('<form', '<form target="_top"');
     const fullHTML = `
       <!DOCTYPE html>
@@ -104,7 +104,15 @@ const Subscription: React.FC = () => {
       setIframeUrl(url);
       setPaymentForm(response.data);
     } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Payment initiation failed');
+      // 处理后端返回的具体错误
+      const errorMessage = err.response?.data?.message || 'Payment initiation failed';
+      setMessage(errorMessage);
+      if (err.response?.data?.code === 'SUB_001') {
+        setTimeout(() => {
+          setMessage('');
+          navigate('/news', { replace: true });
+        }, 2000);
+      }
     }
   };
 
@@ -145,7 +153,7 @@ const Subscription: React.FC = () => {
           <iframe
             title="Alipay Payment"
             src={iframeUrl}
-            sandbox="allow-forms allow-scripts allow-top-navigation" // 移除 allow-same-origin
+            sandbox="allow-forms allow-scripts allow-top-navigation"
             style={{ width: '100%', height: '100%', border: 'none' }}
           />
         )}
